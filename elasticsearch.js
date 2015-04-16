@@ -75,8 +75,40 @@ LiveDbElasticsearch.prototype.writeSnapshot = function(cName, docName, data, cal
   });
 };
 
-// TODO implement optional bulkGetSnapshot
-//LiveDbElasticsearch.prototype.bulkGetSnapshot(requests, callback)
+// requests look like { coll: ['doc1', 'doc2'], col2: ['doc3'] }
+LiveDbElasticsearch.prototype.bulkGetSnapshot = function(requests, callback) {
+  var docs = [],
+      results = {};
+  for (var type in requests) {
+    if (requests.hasOwnProperty(type)) {
+      results[type] = {};
+      for (var idCounter = 0; idCounter < requests[type].length; idCounter++) {
+        docs.push({
+          _type: type,
+          _id: requests[type][idCounter]
+        });
+      }
+    }
+  }
+
+  this.client.mget({
+    index: 'snapshot',
+    body: {
+      docs: docs
+    }
+  }, function(error, response) {
+    if (error) callback(error, null);
+    else if (response) {
+      for (var i = 0; i < response.docs.length; i++) {
+        var doc = response.docs[i];
+        if (doc.found) {
+          results[doc._type][doc._id] = doc._source._val;
+        }
+      }
+      callback(null, results);
+    }
+  });
+};
 
 /********************
  * Operation Log API

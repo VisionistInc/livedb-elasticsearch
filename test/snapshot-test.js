@@ -103,6 +103,78 @@ describe('livedb-elasticsearch (snapshots)', function() {
       });
     });
   });
+
+  describe('#bulkGetSnapshot', function() {
+    it('returns all documents found', function(done) {
+      async.waterfall([
+        function(callback) {
+          liveES.writeSnapshot('collA', 'docA', {v:1}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collA', 'docB', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collB', 'docC', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collB', 'docD', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.bulkGetSnapshot({ collA: ['docA'], collB: ['docC', 'docD']}, callback);
+        },
+      ], function(error, response) {
+        if (error) throw error;
+        expect(response).to.eql({
+          collA: { docA: {v:1}},
+          collB: { docC: {v:2}, docD: {v:2}}
+        });
+        done();
+      });
+    });
+
+    it('returns empty objects for collections with no documents found', function(done) {
+      liveES.bulkGetSnapshot({'coll': ['doc']}, function(error, response) {
+        if (error) throw error;
+        expect(response).to.eql({coll: {}});
+        done();
+      });
+    });
+
+    it('does not return nonexistent documents', function(done) {
+      async.waterfall([
+        function(callback) {
+          liveES.writeSnapshot('collA', 'docA', {v:1}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collA', 'docB', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collB', 'docC', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.writeSnapshot('collB', 'docD', {v:2}, callbackHandler(callback));
+        },
+        function(error, response, callback) {
+          if (error) throw error;
+          liveES.bulkGetSnapshot({ collA: ['docA'], collB: ['docB', 'docC']}, callback);
+        },
+      ], function(error, response) {
+        if (error) throw error;
+        expect(response).to.eql({
+          collA: { docA: {v:1}},
+          collB: { docC: {v:2}}
+        });
+        done();
+      });
+    });
+  });
 });
 
 /*
