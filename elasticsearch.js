@@ -37,7 +37,17 @@ LiveDbElasticsearch.prototype.getSnapshot = function(cName, docName, callback) {
     type: cName,
     id: docName
   }, function(error, response) {
-    parseResponse(error, response, callback);
+    if (error) {
+      if (response && response.status === 404) {
+        // if missing, return null (not error)
+        callback(null, null);
+      } else {
+        callback(error, null);
+      }
+    } else {
+      // found, return value
+      callback(null, response._source._val);
+    }
   });
 };
 
@@ -47,11 +57,21 @@ LiveDbElasticsearch.prototype.writeSnapshot = function(cName, docName, data, cal
     type: cName,
     id: docName,
     body: {
+      // TODO necessary?  okay to exclude other values?
       // this is just to accommodate values that aren't already key,value pairs
       _val: data
-    }
+    },
+    refresh: true
   }, function(error, response) {
-    parseResponse(error, response, callback);
+    if (error) callback(error, null);
+    else if (response) {
+      if (response.created || response._version > 1) {
+        callback(null, data);
+      } else {
+        console.error("writeSnapshot unable to index data", response);
+        callback("writeSnapshot: error, unable to index data", null);
+      }
+    }
   });
 };
 
@@ -80,7 +100,7 @@ LiveDbElasticsearch.prototype.writeOp = function(cName, docName, opData, callbac
       if (response.created || response._version > 1) {
         callback(null, opData);
       } else {
-        console.error("writeop response !created", response);
+        console.error("writeOp unable to index opData", response);
         callback("writeOp: error, unable to index data", null);
       }
     }
