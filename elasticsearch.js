@@ -31,6 +31,9 @@ LiveDbElasticsearch.prototype.close = function(callback) {
  * Snapshot API
  *******************/
 
+/*
+ * Retrieve the snapshot data stored at 'snapshot/cName/docName'.
+ */
 LiveDbElasticsearch.prototype.getSnapshot = function(cName, docName, callback) {
   this.client.get({
     index: 'snapshot',
@@ -51,6 +54,9 @@ LiveDbElasticsearch.prototype.getSnapshot = function(cName, docName, callback) {
   });
 };
 
+/*
+ * Store the given snapshot data at 'snapshot/cName/docName'.
+ */
 LiveDbElasticsearch.prototype.writeSnapshot = function(cName, docName, data, callback) {
   this.client.index({
     index: 'snapshot',
@@ -75,7 +81,14 @@ LiveDbElasticsearch.prototype.writeSnapshot = function(cName, docName, data, cal
   });
 };
 
-// requests look like { coll: ['doc1', 'doc2'], col2: ['doc3'] }
+/*
+ * Retrieve the specified snapshots.
+ *
+ * @param {requests} should be formatted like this:
+ *   { collA: ['doc1', 'doc2'], collB: ['doc3'] }
+ *
+ * Callback accepts parameters (error, { collA: { doc1: { snapshot }} ... })
+ */
 LiveDbElasticsearch.prototype.bulkGetSnapshot = function(requests, callback) {
   var docs = [],
       results = {};
@@ -114,8 +127,10 @@ LiveDbElasticsearch.prototype.bulkGetSnapshot = function(requests, callback) {
  * Operation Log API
  ********************/
 
-// ops are stored at ops-<cname>/<docName>/<opData.v>
-// opData.v is the version number
+/*
+ * Store the given opData at 'ops-<cName>/<docName>/<opData.v>', where
+ * opData.v is the version number of the document.
+ */
 LiveDbElasticsearch.prototype.writeOp = function(cName, docName, opData, callback) {
   var index = ('ops-' + cName).toLowerCase();
 
@@ -139,7 +154,12 @@ LiveDbElasticsearch.prototype.writeOp = function(cName, docName, opData, callbac
   });
 };
 
-//TODO make sure this is not off-by-one
+/*
+ * Get the *next* version number to be used for the document.
+ *
+ * If the document does not exist, returns 0.
+ * Otherwise, returns the document count (versions are 0-indexed).
+ */
 LiveDbElasticsearch.prototype.getVersion = function(cName, docName, callback) {
   var index = ('ops-' + cName).toLowerCase();
   this.client.count({
@@ -152,15 +172,14 @@ LiveDbElasticsearch.prototype.getVersion = function(cName, docName, callback) {
   });
 };
 
-// Get operations between [start, end) noninclusively. (Ie, the range should
-// contain start but not end).
-//
-// If end is null, this function should return all operations from start onwards.
-//
-// The operations that getOps returns don't need to have a version: field.
-// The version will be inferred from the parameters if it is missing.
-//
-// Callback should be called as callback(error, [list of ops]);
+/*
+ * Get operations between [start, end) non-inclusively.  (The range should
+ * contain the start index but not the end).
+ *
+ * If end is null, return all operations from start onwards.
+ *
+ * Callback parameters are (error, [list of ops])
+ */
 LiveDbElasticsearch.prototype.getOps = function(cName, docName, start, end, callback) {
   var index = ('ops-' + cName).toLowerCase();
   var opsFilter = { gte: start };
@@ -175,6 +194,7 @@ LiveDbElasticsearch.prototype.getOps = function(cName, docName, start, end, call
     body: {
       query: {
         range: {
+          // the _id field is not indexed, so search on the version field
           v: opsFilter
         }
       }
@@ -197,42 +217,6 @@ LiveDbElasticsearch.prototype.getOps = function(cName, docName, start, end, call
     }
   });
 };
-
-/*******************
- * Helper functions
- *******************/
-
-/**
- * Extract data from elasticsearch responses, handle errors, handle callbacks.
- */
-function parseResponse(error, response, callback) {
-  //console.log("error", error);
-  //console.log("response", response);
-
-  if(error) {
-    // don't treat not found as an error (is this appropriate?)
-    if (error.message === "Not Found" && !response.found) {
-
-      callback(null, null);
-      return;
-
-    } else {
-      console.error("livedb-elasticsearch", error);
-    }
-  }
-
-  if(!error && response) {
-    response = response._source;
-
-    if (response && response._val) {
-      response = response._val;
-    }
-
-    response = JSON.stringify(response);
-  }
-
-  callback(error, response);
-}
 
 // expose the elasticsearch liveDB implementation
 module.exports = LiveDbElasticsearch;

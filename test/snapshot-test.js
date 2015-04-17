@@ -176,17 +176,3 @@ describe('livedb-elasticsearch (snapshots)', function() {
     });
   });
 });
-
-/*
-
-describe('#method', function() {
-  it('doessomething', function(done) {
-    liveES.function('coll', 'doc', function(error, response) {
-      if (error) throw error;
-      expect(response).to.eql(something);
-      done();
-    });
-  });
-});
-
-*/

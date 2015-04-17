@@ -7,7 +7,7 @@ An [Elasticsearch](https://www.elastic.co/products/elasticsearch) adapter for [l
 ## Example usage
 ```javascript
 var LiveElasticsearch = require('livedb-elasticsearch');
-var liveES = new LiveES({ host: 'localhost:9200' });
+var liveES = new LiveElasticsearch({ host: 'localhost:9200' });
 
 // with liveDB
 var livedb = require('livedb');
