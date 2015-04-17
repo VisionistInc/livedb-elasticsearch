@@ -49,7 +49,7 @@ LiveDbElasticsearch.prototype.getSnapshot = function(cName, docName, callback) {
       }
     } else {
       // found, return value
-      callback(null, response._source._val);
+      callback(null, response._source);
     }
   });
 };
@@ -62,11 +62,7 @@ LiveDbElasticsearch.prototype.writeSnapshot = function(cName, docName, data, cal
     index: 'snapshot',
     type: cName,
     id: docName,
-    body: {
-      // TODO necessary?  okay to exclude other values?
-      // this is just to accommodate values that aren't already key,value pairs
-      _val: data
-    },
+    body: data,
     refresh: true
   }, function(error, response) {
     if (error) callback(error, null);
@@ -115,7 +111,7 @@ LiveDbElasticsearch.prototype.bulkGetSnapshot = function(requests, callback) {
       for (var i = 0; i < response.docs.length; i++) {
         var doc = response.docs[i];
         if (doc.found) {
-          results[doc._type][doc._id] = doc._source._val;
+          results[doc._type][doc._id] = doc._source;
         }
       }
       callback(null, results);
